@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>DriveHub — Walk-in Drive Manager</title>
+<meta name="theme-color" content="#080b12">
+<link rel="manifest" href="manifest.json">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#080b12;--bg1:#0e1219;--bg2:#141a25;--bg3:#1a2232;--bg4:#212b3d;--bd:#1c2536;--bd1:#283344;--t0:#f0f4fc;--t1:#bfc9db;--t2:#8493aa;--t3:#576580;--blue:#4f90f7;--blueD:rgba(79,144,247,.12);--blueG:rgba(79,144,247,.25);--grn:#34d399;--grnD:rgba(52,211,153,.12);--amb:#fbbf24;--ambD:rgba(251,191,36,.12);--red:#f87171;--redD:rgba(248,113,113,.12);--vio:#a78bfa;--vioD:rgba(167,139,250,.12);--teal:#2dd4bf}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t0);min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.5}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd1);border-radius:3px}
+a{color:var(--blue);text-decoration:none}
+
+/* OFFLINE */
+.offline-bar{position:fixed;top:0;left:0;right:0;background:var(--amb);color:#000;text-align:center;padding:6px;font-size:.76rem;font-weight:600;z-index:9999;transform:translateY(-100%);transition:transform .3s}.offline-bar.show{transform:translateY(0)}
+
+/* VIEWS */
+.view{display:none;min-height:100dvh}.view.active{display:flex;flex-direction:column}
+
+/* LOGIN */
+.login-view{align-items:center;justify-content:center;padding:2rem;position:relative;overflow:hidden}
+.login-glow{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 30% 0%,rgba(79,144,247,.08),transparent 70%),radial-gradient(ellipse 50% 40% at 80% 100%,rgba(167,139,250,.06),transparent 70%)}
+.login-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(79,144,247,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,144,247,.025) 1px,transparent 1px);background-size:52px 52px;mask-image:radial-gradient(ellipse 65% 55% at 50% 50%,#000,transparent)}
+.login-box{position:relative;z-index:1;width:100%;max-width:400px;text-align:center}
+.logo-mark{width:72px;height:72px;margin:0 auto 1.5rem;background:linear-gradient(135deg,var(--blue),var(--vio));border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;box-shadow:0 8px 32px rgba(79,144,247,.3)}
+.login-box h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.4rem}
+.login-box .sub{color:var(--t2);font-size:.95rem;margin-bottom:2rem}
+.login-card{background:var(--bg1);border:1px solid var(--bd);border-radius:16px;padding:2rem;text-align:left}
+.login-card h2{text-align:center;font-size:1.15rem;font-weight:700;margin-bottom:.2rem}
+.login-card .lsub{text-align:center;color:var(--t2);font-size:.82rem;margin-bottom:1.5rem}
+.role-tabs{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:1.5rem}
+.role-tab{flex:1;padding:.55rem;text-align:center;font-size:.82rem;font-weight:600;border-radius:6px;cursor:pointer;transition:all .2s;border:none;background:none;color:var(--t3);font-family:inherit}
+.role-tab.on{background:var(--bg3);color:var(--t0);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+
+/* FORM ELEMENTS */
+.fg{margin-bottom:1rem}
+.fl{display:block;font-size:.78rem;font-weight:500;color:var(--t2);margin-bottom:.3rem}
+.fl .req{color:var(--red)}
+.fi,.fsel,.fta{width:100%;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--bd);border-radius:7px;color:var(--t0);font-family:inherit;font-size:.85rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.fi:focus,.fsel:focus,.fta:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blueG)}
+.fi::placeholder,.fta::placeholder{color:var(--t3)}
+.fi.err{border-color:var(--red);box-shadow:0 0 0 3px var(--redD)}
+.ferr{font-size:.7rem;color:var(--red);margin-top:.2rem;display:none}
+.fsel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23576580' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;padding-right:2.2rem}
+.fta{resize:vertical;min-height:70px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+@media(max-width:480px){.frow{grid-template-columns:1fr}}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .95rem;border-radius:7px;border:1px solid var(--bd);background:var(--bg2);color:var(--t0);font-family:inherit;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn:hover{background:var(--bg3);border-color:var(--bd1)}.btn:active{transform:scale(.97)}
+.btn-pri{background:var(--blue);border-color:var(--blue);color:#fff}.btn-pri:hover{background:#3b7ce6}
+.btn-suc{background:var(--grn);border-color:var(--grn);color:#fff}
+.btn-dan{background:var(--redD);border:none;color:var(--red)}
+.btn-ghost{background:transparent;border:none;color:var(--t2)}.btn-ghost:hover{color:var(--t0);background:var(--bg2)}
+.btn-block{width:100%;justify-content:center;padding:.7rem;font-size:.9rem}
+.btn-sm{padding:.35rem .65rem;font-size:.76rem}
+
+/* HEADER */
+.app-hdr{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.15rem;border-bottom:1px solid var(--bd);background:rgba(8,11,18,.88);backdrop-filter:blur(14px);position:sticky;top:0;z-index:100}
+.hdr-l{display:flex;align-items:center;gap:.55rem}
+.hdr-logo{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--vio));border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:.78rem}
+.hdr-title{font-size:.95rem;font-weight:600}
+.hdr-badge{font-size:.6rem;padding:2px 7px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.hdr-badge.adm{background:var(--blueD);color:var(--blue)}.hdr-badge.cnd{background:var(--vioD);color:var(--vio)}
+.hdr-r{display:flex;align-items:center;gap:.4rem}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:.2rem;background:var(--bg);border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:.5rem .65rem;font-size:.76rem;font-weight:500;color:var(--t3);cursor:pointer;border-radius:6px;border:none;background:none;font-family:inherit;white-space:nowrap;transition:all .2s}
+.tab.on{background:var(--bg3);color:var(--t0)}
+
+/* CONTENT */
+.content{flex:1;padding:1.15rem;overflow-y:auto}
+.panel{display:none}.panel.on{display:block}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.6rem;margin-bottom:1.25rem}
+.st{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:.85rem}
+.st-label{font-size:.6rem;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-weight:500;margin-bottom:.35rem}
+.st-val{font-size:1.5rem;font-weight:700;font-family:monospace}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;background:var(--bg2)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:.6rem .8rem;font-weight:600;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);background:var(--bg);border-bottom:1px solid var(--bd);white-space:nowrap}
+td{padding:.55rem .8rem;border-bottom:1px solid var(--bd);color:var(--t1);white-space:nowrap}
+tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.015)}
+.pill{display:inline-flex;padding:2px 8px;border-radius:12px;font-size:.6rem;font-weight:600}
+.pill.reg{background:var(--blueD);color:var(--blue)}.pill.inp{background:var(--ambD);color:var(--amb)}.pill.sel{background:var(--grnD);color:var(--grn)}.pill.rej{background:var(--redD);color:var(--red)}
+.token{font-family:monospace;color:var(--blue);font-weight:500;font-size:.78rem}
+
+/* SEARCH */
+.search-row{display:flex;gap:.6rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:180px;position:relative}
+.search-wrap svg{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--t3);width:15px;height:15px}
+.search-wrap .fi{padding-left:2.2rem}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+@media(min-width:640px){.modal-bg{align-items:center}}
+.modal{background:var(--bg1);border:1px solid var(--bd);border-radius:16px 16px 0 0;width:100%;max-width:580px;max-height:90dvh;overflow-y:auto}
+@media(min-width:640px){.modal{border-radius:16px}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.15rem 1.35rem;border-bottom:1px solid var(--bd)}
+.modal-hdr h2{font-size:1.05rem;font-weight:600}
+.modal-body{padding:1.35rem}
+.modal-ft{display:flex;gap:.6rem;justify-content:flex-end;padding:.85rem 1.35rem;border-top:1px solid var(--bd)}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:1.15rem;margin-bottom:.85rem}
+.card h3{font-size:.9rem;font-weight:600;margin-bottom:.85rem;display:flex;align-items:center;gap:.45rem}
+
+/* FORM SECTION (candidate) */
+.fsec{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:1.35rem;margin-bottom:.85rem}
+.fsec h3{font-size:.85rem;font-weight:600;margin-bottom:1rem;color:var(--t2);display:flex;align-items:center;gap:.45rem}
+
+/* SUCCESS */
+.success{text-align:center;padding:3rem 1.5rem;max-width:420px;margin:0 auto}
+.success-ico{width:72px;height:72px;background:var(--grnD);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.1rem;margin:0 auto 1.25rem}
+.success h2{font-size:1.35rem;font-weight:700;margin-bottom:.35rem}
+.success p{color:var(--t2);margin-bottom:.3rem}
+.token-box{font-family:monospace;font-size:1.6rem;font-weight:700;color:var(--blue);background:var(--blueD);padding:.6rem 1.25rem;border-radius:10px;display:inline-block;margin:1rem 0;letter-spacing:.08em}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem 1.5rem;color:var(--t3)}
+.empty h3{font-size:.95rem;margin-bottom:.35rem;color:var(--t2)}.empty p{font-size:.82rem}
+
+/* BULK */
+.file-drop{position:relative;border:2px dashed var(--bd1);border-radius:10px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s}
+.file-drop:hover,.file-drop.dragover{border-color:var(--blue);background:var(--blueD)}
+.file-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.file-drop h4{font-size:.82rem;font-weight:600;margin-bottom:.2rem}.file-drop p{font-size:.72rem;color:var(--t3)}
+.bulk-rows{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-top:.75rem}
+.bulk-row{display:flex;align-items:center;justify-content:space-between;padding:.4rem .7rem;border-bottom:1px solid var(--bd);font-size:.74rem}.bulk-row:last-child{border-bottom:none}
+
+/* API CARDS */
+.api-card{display:flex;align-items:center;gap:.7rem;padding:.7rem;background:var(--bg);border:1px solid var(--bd);border-radius:8px;margin-bottom:.45rem;transition:all .2s}
+.api-card:hover{border-color:var(--bd1);background:var(--bg2)}
+.api-logo{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+.api-info{flex:1;min-width:0}.api-info h5{font-size:.78rem;font-weight:600;margin-bottom:.02rem}.api-info p{font-size:.6rem;color:var(--t3)}
+.api-st{font-size:.58rem;font-weight:600;padding:2px 7px;border-radius:12px;flex-shrink:0;cursor:pointer;border:none;font-family:inherit}
+.api-st.live{background:var(--grnD);color:var(--grn)}.api-st.cfg{background:var(--ambD);color:var(--amb)}.api-st.off{background:var(--redD);color:var(--red)}
+
+/* SHARE */
+.share-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:.5rem}
+.share-opt{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.6rem .3rem;background:var(--bg);border:1px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .2s;font-size:.54rem;color:var(--t2);font-weight:500}
+.share-opt:hover{border-color:var(--bd1);transform:translateY(-2px)}
+.share-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem}
+
+/* RECRUITER SECTION */
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.65rem}
+.rec-card{display:flex;align-items:center;gap:.65rem;padding:.7rem;background:var(--bg);border:1px solid var(--bd);border-radius:8px;transition:all .2s}
+.rec-card:hover{border-color:var(--bd1)}
+.rec-num{width:28px;height:28px;border-radius:50%;background:var(--blueD);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+.rec-info{flex:1;min-width:0}.rec-info .rname{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rec-info .rphone{font-size:.7rem;color:var(--t3);font-family:monospace}
+.rec-actions{display:flex;gap:.25rem}
+.rec-empty{color:var(--t3);font-size:.78rem;font-style:italic}
+.rec-add-row{display:flex;gap:.5rem;margin-bottom:1rem}
+.rec-add-row .fi{flex:1}
+
+/* DETAIL */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+@media(max-width:480px){.detail-grid{grid-template-columns:1fr}}
+.detail-item label{display:block;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:.15rem}
+.detail-item span{font-size:.85rem;color:var(--t0)}
+.detail-sec{margin-bottom:1.25rem}
+.detail-sec h4{font-size:.72rem;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem;padding-bottom:.35rem;border-bottom:1px solid var(--bd)}
+
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;gap:.6rem;padding:.35rem 0;font-size:.82rem;color:var(--t1);cursor:pointer}
+.toggle-row input{accent-color:var(--blue);width:16px;height:16px}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:.35rem;align-items:center}
+.toast{padding:.6rem 1.1rem;border-radius:8px;font-size:.82rem;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,.3);transition:opacity .3s}
+.toast.success{background:var(--grn);color:#fff}.toast.error{background:var(--red);color:#fff}.toast.info{background:var(--blue);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="offline-bar" id="offlineBar">⚡ You're offline — all data saved locally</div>
+
+<!-- ═══════ LOGIN VIEW ═══════ -->
+<div class="view login-view active" id="loginView">
+  <div class="login-glow"></div><div class="login-grid"></div>
+  <div class="login-box">
+    <div class="logo-mark">D</div>
+    <h1>DriveHub</h1>
+    <p class="sub">Offline-first walk-in drive management</p>
+    <div class="login-card">
+      <h2>Sign In</h2>
+      <p class="lsub">Access admin console or register as candidate</p>
+      <div class="role-tabs">
+        <button class="role-tab on" onclick="switchLoginRole('admin')">Admin</button>
+        <button class="role-tab" onclick="switchLoginRole('candidate')">Candidate</button>
+      </div>
+      <div id="adminLoginFields">
+        <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="loginEmail" placeholder="admin@company.com"><div class="ferr" id="errLoginEmail">Please enter a valid email</div></div>
+        <div class="fg"><label class="fl">Password <span class="req">*</span></label><input type="password" class="fi" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"><div class="ferr" id="errLoginPass">Password is required</div></div>
+        <button class="btn btn-pri btn-block" onclick="doLogin()">Sign In</button>
+        <p style="text-align:center;font-size:.7rem;color:var(--t3);margin-top:.75rem">Default: admin@drivehub.com / drivehub2026</p>
+      </div>
+      <div id="candLoginFields" style="display:none">
+        <div class="fg"><label class="fl">Full Name <span class="req">*</span></label><input type="text" class="fi" id="candLName" placeholder="Your name"></div>
+        <div class="fg"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="candLEmail" placeholder="you@email.com"></div>
+        <div class="fg"><label class="fl">Phone <span class="req">*</span></label><input type="tel" class="fi" id="candLPhone" placeholder="+91 XXXXX XXXXX"></div>
+        <button class="btn btn-pri btn-block" onclick="doCandLogin()">Continue to Registration</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ADMIN VIEW ═══════ -->
+<div class="view" id="adminView">
+  <header class="app-hdr">
+    <div class="hdr-l"><div class="hdr-logo">D</div><span class="hdr-title">DriveHub</span><span class="hdr-badge adm">Admin</span></div>
+    <div class="hdr-r">
+      <span style="font-size:.72rem;color:var(--t3)" id="adminLabel"></span>
+      <button class="btn btn-sm btn-ghost" onclick="exportCSV()">📥 Export</button>
+      <button class="btn btn-sm btn-ghost" onclick="doLogout()">↩ Logout</button>
+    </div>
+  </header>
+  <div class="tabs" id="adminTabs">
+    <button class="tab on" onclick="aTab('dashboard')">Dashboard</button>
+    <button class="tab" onclick="aTab('candidates')">Candidates</button>
+    <button class="tab" onclick="aTab('recruiters')">Recruiters</button>
+    <button class="tab" onclick="aTab('bulk')">Bulk Upload</button>
+    <button class="tab" onclick="aTab('integrations')">Integrations</button>
+    <button class="tab" onclick="aTab('share')">Share</button>
+    <button class="tab" onclick="aTab('settings')">Settings</button>
+  </div>
+  <div class="content">
+    <!-- DASHBOARD -->
+    <div class="panel on" id="p-dashboard"><div class="stats" id="statsGrid"></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem"><h3 style="font-size:.95rem;font-weight:600">Recent Registrations</h3></div><div id="recentTbl"></div></div>
+
+    <!-- CANDIDATES -->
+    <div class="panel" id="p-candidates">
+      <div class="search-row">
+        <div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input type="text" class="fi" placeholder="Search name, email, token..." id="searchInput" oninput="renderCandTbl()"></div>
+        <select class="fsel" id="statusFilter" onchange="renderCandTbl()" style="width:auto;min-width:120px"><option value="">All Status</option><option value="registered">Registered</option><option value="in-progress">In Progress</option><option value="selected">Selected</option><option value="rejected">Rejected</option></select>
+      </div>
+      <div id="candTblWrap"></div>
+    </div>
+
+    <!-- RECRUITERS -->
+    <div class="panel" id="p-recruiters">
+      <div class="card">
+        <h3>👥 Recruiter Assignments <span style="font-size:.72rem;font-weight:400;color:var(--t3)" id="recCount"></span></h3>
+        <p style="font-size:.82rem;color:var(--t2);margin-bottom:1rem">Assign up to 50 recruiters to manage candidates during the drive. Each recruiter gets a number for candidates to contact.</p>
+        <div class="rec-add-row">
+          <input type="text" class="fi" id="recName" placeholder="Recruiter name">
+          <input type="tel" class="fi" id="recPhone" placeholder="Phone number">
+          <select class="fsel" id="recRole" style="width:auto;min-width:100px"><option>Screener</option><option>Interviewer</option><option>Coordinator</option><option>Panel Lead</option><option>HR Manager</option></select>
+          <button class="btn btn-pri btn-sm" onclick="addRecruiter()">+ Add</button>
+        </div>
+        <div class="rec-grid" id="recGrid"></div>
+      </div>
+    </div>
+
+    <!-- BULK UPLOAD -->
+    <div class="panel" id="p-bulk">
+      <div class="card">
+        <h3>📤 Bulk Candidate Upload</h3>
+        <p style="font-size:.82rem;color:var(--t2);margin-bottom:1rem">Upload CSV/Excel to import multiple candidates at once.</p>
+        <div class="file-drop" id="bulkDrop"><input type="file" accept=".csv,.xlsx,.xls,.tsv" onchange="handleBulk(this)" id="bulkInput"><h4>Drop CSV/Excel here or tap to browse</h4><p>Supports .csv, .xlsx, .xls, .tsv</p></div>
+        <div id="bulkPreview" style="display:none"><div id="bulkSummary" style="font-size:.82rem;margin-top:.75rem"></div><div class="bulk-rows" id="bulkRows"></div><div style="margin-top:.75rem;display:flex;gap:.5rem"><button class="btn btn-pri btn-sm" onclick="importBulk()">✓ Import Valid</button><button class="btn btn-sm" onclick="clearBulk()">Cancel</button></div></div>
+      </div>
+      <div class="card"><h3>📋 Template</h3><button class="btn btn-sm" onclick="dlTemplate()">📥 Download CSV Template</button></div>
+    </div>
+
+    <!-- INTEGRATIONS -->
+    <div class="panel" id="p-integrations">
+      <div class="card"><h3>🔗 Assessment Platforms</h3><p style="font-size:.82rem;color:var(--t2);margin-bottom:1rem">Connect assessment platforms to sync scores.</p><div id="apiCards"></div></div>
+    </div>
+
+    <!-- SHARE -->
+    <div class="panel" id="p-share">
+      <div class="card"><h3>🔗 Drive Link</h3><div style="display:flex;gap:.4rem;align-items:center"><input type="text" class="fi" id="shareLink" readonly style="font-family:monospace;font-size:.72rem;color:var(--blue)"><button class="btn btn-pri btn-sm" onclick="copyLink()">📋 Copy</button></div></div>
+      <div class="card"><h3>📨 Share via Apps</h3><div class="share-grid" id="shareGrid"></div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="p-settings">
+      <div class="card">
+        <h3>🏢 Drive Configuration</h3>
+        <div class="fg"><label class="fl">Organization Name</label><input type="text" class="fi" id="cfgOrg" placeholder="e.g. Acme Corp" oninput="saveCfg()"></div>
+        <div class="fg"><label class="fl">Drive Title</label><input type="text" class="fi" id="cfgTitle" placeholder="e.g. Software Engineer Walk-in" oninput="saveCfg()"></div>
+        <div class="frow"><div class="fg"><label class="fl">Drive Date</label><input type="date" class="fi" id="cfgDate" oninput="saveCfg()"></div><div class="fg"><label class="fl">Venue</label><input type="text" class="fi" id="cfgVenue" placeholder="e.g. Building A" oninput="saveCfg()"></div></div>
+        <div class="fg"><label class="fl">Additional Positions (comma-separated, added to built-in IT/Non-IT roles)</label><input type="text" class="fi" id="cfgPos" placeholder="e.g. Trainee Analyst, SAP ABAP, Custom Role" oninput="saveCfg()"></div>
+      </div>
+      <div class="card"><h3>📋 Form Fields</h3><p style="font-size:.78rem;color:var(--t3);margin-bottom:.75rem">Toggle which fields candidates see.</p><div id="fieldToggles"></div></div>
+      <div class="card"><h3>🔐 Admin Credentials</h3><p style="font-size:.78rem;color:var(--t3);margin-bottom:.75rem">Change your login email and password.</p>
+        <div class="fg"><label class="fl">Admin Email</label><input type="email" class="fi" id="cfgAdminEmail" oninput="saveAdminCreds()"></div>
+        <div class="fg"><label class="fl">Admin Password</label><input type="text" class="fi" id="cfgAdminPass" oninput="saveAdminCreds()"></div>
+      </div>
+      <div class="card"><h3>⚠️ Data Management</h3><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-dan btn-sm" onclick="clearAll()">🗑 Clear All Candidates</button><button class="btn btn-sm" onclick="exportCSV()">📥 Export CSV</button><button class="btn btn-sm" onclick="exportJSON()">📥 Export JSON</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CANDIDATE DETAIL MODAL -->
+<div class="modal-bg" id="candModal"><div class="modal"><div class="modal-hdr"><h2 id="modalTitle">Candidate</h2><button class="btn btn-ghost" onclick="closeModal('candModal')">✕</button></div><div class="modal-body" id="modalBody"></div><div class="modal-ft" id="modalFt"></div></div></div>
+
+<!-- ═══════ CANDIDATE VIEW ═══════ -->
+<div class="view" id="candidateView">
+  <header class="app-hdr">
+    <div class="hdr-l"><div class="hdr-logo">D</div><span class="hdr-title" id="candTitle">DriveHub</span><span class="hdr-badge cnd">Candidate</span></div>
+    <div class="hdr-r"><span style="font-size:.72rem;color:var(--t3)" id="candLabel"></span><button class="btn btn-sm btn-ghost" onclick="doLogout()">↩ Back</button></div>
+  </header>
+  <div class="content">
+    <div id="candFormView" style="max-width:560px;margin:0 auto">
+      <div id="driveBanner" style="text-align:center;margin-bottom:1.5rem;display:none"><h2 id="banTitle" style="font-size:1.2rem;font-weight:700;margin-bottom:.15rem"></h2><p id="banOrg" style="color:var(--t2);font-size:.85rem"></p></div>
+      <form id="regForm" onsubmit="submitReg(event)">
+        <div class="fsec"><h3>👤 Personal Information</h3>
+          <div class="frow"><div class="fg" data-field="fullName"><label class="fl">Full Name <span class="req">*</span></label><input type="text" class="fi" id="rName" required></div><div class="fg" data-field="email"><label class="fl">Email <span class="req">*</span></label><input type="email" class="fi" id="rEmail" required></div></div>
+          <div class="frow"><div class="fg" data-field="phone"><label class="fl">Phone <span class="req">*</span></label><input type="tel" class="fi" id="rPhone" required></div><div class="fg" data-field="dob"><label class="fl">Date of Birth</label><input type="date" class="fi" id="rDob"></div></div>
+          <div class="fg" data-field="gender"><label class="fl">Gender</label><select class="fsel" id="rGender"><option value="">Select...</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option></select></div>
+        </div>
+        <div class="fsec"><h3>🎓 Education</h3>
+          <div class="frow"><div class="fg" data-field="degree"><label class="fl">Degree <span class="req">*</span></label><select class="fsel" id="rDegree" required><option value="">Select...</option><option>B.Tech / B.E.</option><option>M.Tech / M.E.</option><option>MCA</option><option>BCA</option><option>B.Sc</option><option>M.Sc</option><option>MBA</option><option>Ph.D</option><option>Diploma</option><option>Other</option></select></div><div class="fg" data-field="specialization"><label class="fl">Specialization</label><input type="text" class="fi" id="rSpec" placeholder="e.g. Computer Science"></div></div>
+          <div class="frow"><div class="fg" data-field="college"><label class="fl">College</label><input type="text" class="fi" id="rCollege"></div><div class="fg" data-field="passYear"><label class="fl">Year of Passing</label><input type="number" class="fi" id="rYear" min="1990" max="2035"></div></div>
+        </div>
+        <div class="fsec"><h3>💼 Professional</h3>
+          <div class="frow"><div class="fg" data-field="experience"><label class="fl">Experience (years)</label><input type="number" class="fi" id="rExp" min="0" max="50" step="0.5" placeholder="0"></div><div class="fg" data-field="currentCompany"><label class="fl">Current Company</label><input type="text" class="fi" id="rCompany"></div></div>
+          <div class="fg" data-field="skills"><label class="fl">Key Skills</label><input type="text" class="fi" id="rSkills" placeholder="e.g. Java, React, Python"></div>
+          <div class="fg" data-field="positionApplied"><label class="fl">Position Applied For</label><select class="fsel" id="rPosition"><option value="">Select role...</option>
+<optgroup label="── IT / Software ──">
+<option>Software Developer (SDE-1)</option><option>Software Developer (SDE-2)</option><option>Senior Software Engineer (SDE-3)</option><option>Lead Engineer / Tech Lead</option><option>Full Stack Developer</option><option>Frontend Developer</option><option>Backend Developer</option><option>Mobile App Developer (Android/iOS)</option><option>DevOps Engineer</option><option>Cloud Engineer (AWS/Azure/GCP)</option><option>Site Reliability Engineer (SRE)</option><option>Data Engineer</option><option>Data Scientist / ML Engineer</option><option>AI / NLP Engineer</option><option>QA / Test Engineer</option><option>SDET (Automation Tester)</option><option>Performance Test Engineer</option><option>Cybersecurity Analyst</option><option>Network Engineer</option><option>System Administrator</option><option>Database Administrator (DBA)</option><option>ERP Consultant (SAP/Oracle)</option><option>Salesforce Developer</option><option>ServiceNow Developer</option><option>UI/UX Designer</option><option>Product Manager (Tech)</option><option>Scrum Master / Agile Coach</option><option>Technical Writer</option><option>IT Support / Helpdesk</option><option>Solutions Architect</option>
+</optgroup>
+<optgroup label="── Non-IT / Corporate ──">
+<option>HR Executive</option><option>HR Manager</option><option>Talent Acquisition Specialist</option><option>Recruiter</option><option>Training & Development</option><option>Operations Manager</option><option>Operations Executive</option><option>Business Analyst</option><option>Management Trainee</option><option>Business Development Executive (BDE)</option><option>Business Development Manager (BDM)</option><option>Sales Executive</option><option>Sales Manager</option><option>Key Account Manager</option><option>Marketing Executive</option><option>Digital Marketing Specialist</option><option>Content Writer / Copywriter</option><option>Social Media Manager</option><option>SEO / SEM Specialist</option><option>Graphic Designer</option><option>Customer Support Executive</option><option>Customer Success Manager</option><option>Accounts Executive</option><option>Finance Analyst</option><option>Chartered Accountant (CA)</option><option>Admin / Office Executive</option><option>Procurement / Purchase Officer</option><option>Supply Chain / Logistics</option><option>Legal / Compliance Officer</option><option>Company Secretary (CS)</option>
+</optgroup>
+<optgroup label="── Engineering / Manufacturing ──">
+<option>Mechanical Engineer</option><option>Electrical Engineer</option><option>Civil Engineer</option><option>Electronics Engineer</option><option>Production Engineer</option><option>Quality Engineer / QC</option><option>Maintenance Engineer</option><option>Design Engineer (CAD/CAM)</option><option>Safety Officer / HSE</option><option>Project Engineer</option>
+</optgroup>
+<optgroup label="── Other ──">
+<option>Intern / Apprentice</option><option>Fresher (Open to Any Role)</option><option>Other (Specify in Notes)</option>
+</optgroup>
+</select></div>
+          <div class="frow"><div class="fg" data-field="currentCtc"><label class="fl">Current CTC (LPA)</label><input type="text" class="fi" id="rCurCtc"></div><div class="fg" data-field="expectedCtc"><label class="fl">Expected CTC (LPA)</label><input type="text" class="fi" id="rExpCtc"></div></div>
+          <div class="fg" data-field="noticePeriod"><label class="fl">Notice Period</label><select class="fsel" id="rNotice"><option value="">Select...</option><option>Immediate</option><option>15 days</option><option>30 days</option><option>60 days</option><option>90 days</option></select></div>
+        </div>
+        <div class="fsec" data-field="notes"><h3>📝 Notes</h3><textarea class="fta" id="rNotes" placeholder="Anything else..."></textarea></div>
+        <button type="submit" class="btn btn-pri btn-block" style="padding:.8rem;font-size:.9rem">Submit Registration</button>
+      </form>
+    </div>
+    <div id="candSuccessView" style="display:none"><div class="success"><div class="success-ico">✓</div><h2>Registration Complete!</h2><p>Your token number:</p><div class="token-box" id="successToken"></div><p style="font-size:.82rem">Show this at the registration desk.</p><button class="btn btn-pri" style="margin-top:1.25rem" onclick="resetCandForm()">Register Another</button></div></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ═══ INDEXEDDB ═══
+var DB='DriveHubDB',db=null;
+function openDB(){return new Promise(function(ok,no){var r=indexedDB.open(DB,3);r.onupgradeneeded=function(e){var d=e.target.result;if(!d.objectStoreNames.contains('candidates')){var s=d.createObjectStore('candidates',{keyPath:'id'});s.createIndex('token','token',{unique:true});s.createIndex('status','status')}if(!d.objectStoreNames.contains('config'))d.createObjectStore('config',{keyPath:'key'});if(!d.objectStoreNames.contains('apis'))d.createObjectStore('apis',{keyPath:'id'});if(!d.objectStoreNames.contains('recruiters'))d.createObjectStore('recruiters',{keyPath:'id'})};r.onsuccess=function(e){db=e.target.result;ok(db)};r.onerror=function(e){no(e.target.error)}})}
+function put(s,d){return new Promise(function(ok,no){var t=db.transaction(s,'readwrite');t.objectStore(s).put(d);t.oncomplete=ok;t.onerror=function(e){no(e.target.error)}})}
+function get(s,k){return new Promise(function(ok,no){var t=db.transaction(s,'readonly');var r=t.objectStore(s).get(k);r.onsuccess=function(){ok(r.result)};r.onerror=function(e){no(e.target.error)}})}
+function getAll(s){return new Promise(function(ok,no){var t=db.transaction(s,'readonly');var r=t.objectStore(s).getAll();r.onsuccess=function(){ok(r.result)};r.onerror=function(e){no(e.target.error)}})}
+function del(s,k){return new Promise(function(ok,no){var t=db.transaction(s,'readwrite');t.objectStore(s).delete(k);t.oncomplete=ok;t.onerror=function(e){no(e.target.error)}})}
+function clr(s){return new Promise(function(ok,no){var t=db.transaction(s,'readwrite');t.objectStore(s).clear();t.oncomplete=ok;t.onerror=function(e){no(e.target.error)}})}
+
+// ═══ STATE ═══
+var candidates=[],recruiters=[],bulkData=[],apis=[];
+var cfg={key:'driveConfig',orgName:'',driveTitle:'',driveDate:'',venue:'',positions:'',fields:{fullName:true,email:true,phone:true,dob:true,gender:true,degree:true,specialization:true,college:true,passYear:true,experience:true,currentCompany:true,skills:true,positionApplied:true,currentCtc:true,expectedCtc:true,noticePeriod:true,notes:true}};
+var adminCreds={key:'adminCreds',email:'admin@drivehub.com',password:'drivehub2026'};
+var FIELDS={fullName:'Full Name',email:'Email',phone:'Phone',dob:'Date of Birth',gender:'Gender',degree:'Degree',specialization:'Specialization',college:'College',passYear:'Year of Passing',experience:'Experience',currentCompany:'Company',skills:'Skills',positionApplied:'Position',currentCtc:'Current CTC',expectedCtc:'Expected CTC',noticePeriod:'Notice Period',notes:'Notes'};
+var DEFAULT_APIS=[{id:'hackerrank',name:'HackerRank',desc:'Coding assessments',color:'#1ba94c',abbr:'HR',status:'disconnected'},{id:'codility',name:'Codility',desc:'Technical screening',color:'#263238',abbr:'CO',status:'disconnected'},{id:'hackerearth',name:'HackerEarth',desc:'Programming tests',color:'#2d3748',abbr:'HE',status:'disconnected'},{id:'mettl',name:'Mercer Mettl',desc:'Aptitude tests',color:'#ff6d00',abbr:'M',status:'disconnected'},{id:'testgorilla',name:'TestGorilla',desc:'Talent assessments',color:'#0d9488',abbr:'TG',status:'disconnected'},{id:'coderbyte',name:'Coderbyte',desc:'Code challenges',color:'#6d28d9',abbr:'CB',status:'disconnected'},{id:'imocha',name:'iMocha',desc:'Skills testing',color:'#1e40af',abbr:'iM',status:'disconnected'}];
+var SHARE_APPS=[{n:'WhatsApp',c:'#25D366',i:'💬',u:function(l){return'https://wa.me/?text='+encodeURIComponent('Register: '+l)}},{n:'Teams',c:'#5865F2',i:'🟦',u:function(l){return'https://teams.microsoft.com/share?href='+encodeURIComponent(l)}},{n:'Slack',c:'#4A154B',i:'⚡',u:function(l){return'https://slack.com/share?text='+encodeURIComponent(l)}},{n:'Gmail',c:'#EA4335',i:'✉️',u:function(l){return'mailto:?subject=Walk-in%20Drive&body='+encodeURIComponent('Register: '+l)}},{n:'LinkedIn',c:'#0A66C2',i:'in',u:function(l){return'https://www.linkedin.com/sharing/share-offsite/?url='+encodeURIComponent(l)}},{n:'Telegram',c:'#0088CC',i:'✈️',u:function(l){return'https://t.me/share/url?url='+encodeURIComponent(l)}},{n:'Twitter/X',c:'#1DA1F2',i:'𝕏',u:function(l){return'https://twitter.com/intent/tweet?url='+encodeURIComponent(l)}},{n:'Facebook',c:'#1877F2',i:'f',u:function(l){return'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(l)}},{n:'Copy Link',c:'#555',i:'📋',u:null}];
+
+// ═══ INIT ═══
+async function init(){
+  await openDB();
+  var sc=await get('config','driveConfig');if(sc)cfg=sc;
+  var ac=await get('config','adminCreds');if(ac)adminCreds=ac;
+  candidates=await getAll('candidates');candidates.sort(function(a,b){return b.ts-a.ts});
+  recruiters=await getAll('recruiters');
+  var sa=await getAll('apis');if(sa.length)apis=sa;else{apis=DEFAULT_APIS.slice();for(var i=0;i<apis.length;i++)await put('apis',apis[i])}
+  var role=localStorage.getItem('dh_role');
+  if(role==='admin')enterAdmin();
+  else if(role==='candidate')enterCandidate();
+}
+init();
+
+// ═══ LOGIN ═══
+function switchLoginRole(r){
+  document.querySelectorAll('.role-tab').forEach(function(t){t.classList.toggle('on',t.textContent.toLowerCase()===r)});
+  document.getElementById('adminLoginFields').style.display=r==='admin'?'':'none';
+  document.getElementById('candLoginFields').style.display=r==='candidate'?'':'none';
+}
+
+function doLogin(){
+  var email=document.getElementById('loginEmail').value.trim();
+  var pass=document.getElementById('loginPass').value;
+  document.querySelectorAll('.fi').forEach(function(f){f.classList.remove('err')});
+  document.querySelectorAll('.ferr').forEach(function(f){f.style.display='none'});
+  var ok=true;
+  if(!email||!email.includes('@')){document.getElementById('loginEmail').classList.add('err');document.getElementById('errLoginEmail').style.display='block';ok=false}
+  if(!pass){document.getElementById('loginPass').classList.add('err');document.getElementById('errLoginPass').style.display='block';ok=false}
+  if(!ok)return;
+  if(email===adminCreds.email&&pass===adminCreds.password){
+    localStorage.setItem('dh_role','admin');
+    toast('Welcome, Admin!','success');
+    enterAdmin();
+  }else{toast('Invalid credentials','error');document.getElementById('loginPass').classList.add('err')}
+}
+
+function doCandLogin(){
+  var name=document.getElementById('candLName').value.trim();
+  var email=document.getElementById('candLEmail').value.trim();
+  var phone=document.getElementById('candLPhone').value.trim();
+  if(!name||!email||!phone){toast('Fill all fields','error');return}
+  localStorage.setItem('dh_role','candidate');
+  localStorage.setItem('dh_cand',JSON.stringify({name:name,email:email,phone:phone}));
+  toast('Welcome, '+name+'!','success');
+  enterCandidate();
+}
+
+function doLogout(){localStorage.removeItem('dh_role');localStorage.removeItem('dh_cand');showView('loginView')}
+
+function showView(id){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});document.getElementById(id).classList.add('active')}
+
+// ═══ ADMIN ═══
+function enterAdmin(){showView('adminView');document.getElementById('adminLabel').textContent=adminCreds.email;loadAdmin()}
+
+function loadAdmin(){renderStats();renderRecent();renderCandTbl();renderRecruiters();loadCfg();renderFieldToggles();renderApis();renderSharePage();genShareLink();
+  document.getElementById('cfgAdminEmail').value=adminCreds.email;document.getElementById('cfgAdminPass').value=adminCreds.password}
+
+function aTab(t){
+  document.querySelectorAll('#adminTabs .tab').forEach(function(el){el.classList.toggle('on',el.textContent.toLowerCase().replace(/\s/g,'').includes(t.substring(0,4)))});
+  document.querySelectorAll('#adminView .panel').forEach(function(p){p.classList.toggle('on',p.id==='p-'+t)});
+}
+
+function renderStats(){
+  var total=candidates.length,reg=candidates.filter(function(c){return c.status==='registered'}).length,inp=candidates.filter(function(c){return c.status==='in-progress'}).length,sel=candidates.filter(function(c){return c.status==='selected'}).length;
+  document.getElementById('statsGrid').innerHTML='<div class="st"><div class="st-label">Total</div><div class="st-val" style="color:var(--blue)">'+total+'</div></div><div class="st"><div class="st-label">Awaiting</div><div class="st-val" style="color:var(--amb)">'+reg+'</div></div><div class="st"><div class="st-label">In Progress</div><div class="st-val" style="color:var(--vio)">'+inp+'</div></div><div class="st"><div class="st-label">Selected</div><div class="st-val" style="color:var(--grn)">'+sel+'</div></div>';
+}
+
+function renderRecent(){
+  var r=candidates.slice(0,5);
+  if(!r.length){document.getElementById('recentTbl').innerHTML='<div class="empty"><h3>No candidates yet</h3><p>Candidates appear after registration</p></div>';return}
+  document.getElementById('recentTbl').innerHTML=buildTbl(r);
+}
+
+function renderCandTbl(){
+  var q=(document.getElementById('searchInput')||{}).value||'';q=q.toLowerCase();
+  var sf=(document.getElementById('statusFilter')||{}).value||'';
+  var f=candidates.filter(function(c){var ms=!q||c.fullName.toLowerCase().includes(q)||c.email.toLowerCase().includes(q)||c.token.toLowerCase().includes(q);var st=!sf||c.status===sf;return ms&&st});
+  if(!f.length){document.getElementById('candTblWrap').innerHTML='<div class="empty"><h3>No candidates found</h3><p>'+(q||sf?'Adjust search or filter':'Candidates appear after registration')+'</p></div>';return}
+  document.getElementById('candTblWrap').innerHTML=buildTbl(f);
+}
+
+function buildTbl(data){
+  var sc={registered:'reg','in-progress':'inp',selected:'sel',rejected:'rej'};
+  return '<div class="tbl-wrap"><table><thead><tr><th>Token</th><th>Name</th><th>Email</th><th>Degree</th><th>Exp</th><th>Recruiter</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+data.map(function(c){
+    return '<tr><td><span class="token">'+c.token+'</span></td><td style="color:var(--t0);font-weight:500">'+esc(c.fullName)+'</td><td>'+esc(c.email)+'</td><td>'+esc(c.degree||'—')+'</td><td>'+(c.experience?c.experience+'y':'—')+'</td><td style="font-size:.72rem;color:var(--t3)">'+(c.assignedRecruiter||'—')+'</td><td><span class="pill '+(sc[c.status]||'reg')+'">'+c.status+'</span></td><td><button class="btn btn-sm btn-ghost" onclick="viewCand(\''+c.id+'\')">View</button><button class="btn btn-sm btn-ghost" onclick="delCand(\''+c.id+'\')">🗑</button></td></tr>'}).join('')+'</tbody></table></div>';
+}
+
+function viewCand(id){
+  var c=candidates.find(function(x){return x.id===id});if(!c)return;
+  document.getElementById('modalTitle').textContent=c.fullName;
+  var recOpts=recruiters.map(function(r){return '<option value="'+esc(r.name)+'" '+(c.assignedRecruiter===r.name?'selected':'')+'>'+esc(r.name)+' ('+esc(r.phone)+')</option>'}).join('');
+  document.getElementById('modalBody').innerHTML='<div class="detail-sec"><h4>Personal</h4><div class="detail-grid"><div class="detail-item"><label>Token</label><span class="token">'+c.token+'</span></div><div class="detail-item"><label>Registered</label><span>'+new Date(c.ts).toLocaleString()+'</span></div><div class="detail-item"><label>Email</label><span>'+esc(c.email)+'</span></div><div class="detail-item"><label>Phone</label><span>'+esc(c.phone||'—')+'</span></div><div class="detail-item"><label>DOB</label><span>'+(c.dob||'—')+'</span></div><div class="detail-item"><label>Gender</label><span>'+(c.gender||'—')+'</span></div></div></div><div class="detail-sec"><h4>Education</h4><div class="detail-grid"><div class="detail-item"><label>Degree</label><span>'+esc(c.degree||'—')+'</span></div><div class="detail-item"><label>Specialization</label><span>'+esc(c.specialization||'—')+'</span></div><div class="detail-item"><label>College</label><span>'+esc(c.college||'—')+'</span></div><div class="detail-item"><label>Year</label><span>'+(c.passYear||'—')+'</span></div></div></div><div class="detail-sec"><h4>Professional</h4><div class="detail-grid"><div class="detail-item"><label>Experience</label><span>'+(c.experience?c.experience+' years':'—')+'</span></div><div class="detail-item"><label>Company</label><span>'+esc(c.currentCompany||'—')+'</span></div><div class="detail-item"><label>Skills</label><span>'+esc(c.skills||'—')+'</span></div><div class="detail-item"><label>Position</label><span>'+esc(c.positionApplied||'—')+'</span></div><div class="detail-item"><label>CTC</label><span>'+(c.currentCtc||'—')+' → '+(c.expectedCtc||'—')+' LPA</span></div><div class="detail-item"><label>Notice</label><span>'+esc(c.noticePeriod||'—')+'</span></div></div></div><div class="fg"><label class="fl">Assign Recruiter</label><select class="fsel" id="assignRec"><option value="">Unassigned</option>'+recOpts+'</select></div><div class="fg"><label class="fl">Update Status</label><select class="fsel" id="statSel"><option value="registered" '+(c.status==='registered'?'selected':'')+'>Registered</option><option value="in-progress" '+(c.status==='in-progress'?'selected':'')+'>In Progress</option><option value="selected" '+(c.status==='selected'?'selected':'')+'>Selected</option><option value="rejected" '+(c.status==='rejected'?'selected':'')+'>Rejected</option></select></div><div class="fg"><label class="fl">Admin Remarks</label><textarea class="fta" id="admRemarks">'+esc(c.adminRemarks||'')+'</textarea></div>';
+  document.getElementById('modalFt').innerHTML='<button class="btn" onclick="closeModal(\'candModal\')">Cancel</button><button class="btn btn-pri" onclick="updateCand(\''+c.id+'\')">Save</button>';
+  document.getElementById('candModal').classList.add('open');
+}
+
+async function updateCand(id){var c=candidates.find(function(x){return x.id===id});if(!c)return;c.status=document.getElementById('statSel').value;c.adminRemarks=document.getElementById('admRemarks').value;c.assignedRecruiter=document.getElementById('assignRec').value;await put('candidates',c);closeModal('candModal');loadAdmin();toast('Updated','success')}
+async function delCand(id){if(!confirm('Delete this candidate?'))return;await del('candidates',id);candidates=candidates.filter(function(c){return c.id!==id});loadAdmin();toast('Removed','info')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+// ═══ RECRUITERS ═══
+function renderRecruiters(){
+  document.getElementById('recCount').textContent='('+recruiters.length+'/50)';
+  if(!recruiters.length){document.getElementById('recGrid').innerHTML='<p class="rec-empty">No recruiters assigned yet. Add up to 50.</p>';return}
+  document.getElementById('recGrid').innerHTML=recruiters.map(function(r,i){
+    return '<div class="rec-card"><div class="rec-num">'+(i+1)+'</div><div class="rec-info"><div class="rname">'+esc(r.name)+'</div><div class="rphone">'+esc(r.phone)+' · '+esc(r.role)+'</div></div><div class="rec-actions"><button class="btn btn-sm btn-ghost" onclick="editRecruiter(\''+r.id+'\')">✏️</button><button class="btn btn-sm btn-ghost" onclick="delRecruiter(\''+r.id+'\')">🗑</button></div></div>';
+  }).join('');
+}
+
+async function addRecruiter(){
+  if(recruiters.length>=50){toast('Maximum 50 recruiters reached','error');return}
+  var name=document.getElementById('recName').value.trim();
+  var phone=document.getElementById('recPhone').value.trim();
+  var role=document.getElementById('recRole').value;
+  if(!name||!phone){toast('Enter name and phone','error');return}
+  var r={id:uid(),name:name,phone:phone,role:role,ts:Date.now()};
+  await put('recruiters',r);recruiters.push(r);
+  document.getElementById('recName').value='';document.getElementById('recPhone').value='';
+  renderRecruiters();toast(name+' added as '+role,'success');
+}
+
+async function delRecruiter(id){
+  if(!confirm('Remove this recruiter?'))return;
+  await del('recruiters',id);recruiters=recruiters.filter(function(r){return r.id!==id});renderRecruiters();toast('Recruiter removed','info');
+}
+
+function editRecruiter(id){
+  var r=recruiters.find(function(x){return x.id===id});if(!r)return;
+  var newName=prompt('Recruiter name:',r.name);if(!newName)return;
+  var newPhone=prompt('Phone:',r.phone);if(!newPhone)return;
+  r.name=newName;r.phone=newPhone;
+  put('recruiters',r);renderRecruiters();toast('Updated','success');
+}
+
+// ═══ BULK UPLOAD ═══
+function handleBulk(input){var f=input.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(e){parseBulk(e.target.result)};reader.readAsText(f)}
+function parseBulk(text){var lines=text.split(/\r?\n/).filter(function(l){return l.trim()});if(lines.length<2){toast('File empty','error');return}var headers=lines[0].split(/[,\t]/).map(function(h){return h.trim().toLowerCase().replace(/[^a-z]/g,'')});bulkData=[];var map={name:['name','fullname','candidatename'],email:['email','emailaddress','mail'],phone:['phone','mobile','contact'],degree:['degree','qualification'],specialization:['specialization','spec','branch'],college:['college','university'],year:['year','yearofpassing','passyear'],experience:['experience','exp'],company:['company','currentcompany'],skills:['skills','keyskills']};function fc(k){var a=map[k]||[];for(var i=0;i<headers.length;i++)if(a.indexOf(headers[i])>=0||headers[i]===k)return i;return -1}var cm={};Object.keys(map).forEach(function(k){cm[k]=fc(k)});var valid=0,errors=0;for(var i=1;i<lines.length;i++){var cols=lines[i].split(/[,\t]/).map(function(c){return c.trim().replace(/^"|"$/g,'')});var row={name:cols[cm.name]||'',email:cols[cm.email]||'',phone:cols[cm.phone]||'',degree:cols[cm.degree]||'',specialization:cols[cm.specialization]||'',college:cols[cm.college]||'',year:cols[cm.year]||'',experience:cols[cm.experience]||'',company:cols[cm.company]||'',skills:cols[cm.skills]||''};row.valid=row.name&&row.email&&row.email.includes('@');if(row.valid)valid++;else errors++;bulkData.push(row)}document.getElementById('bulkPreview').style.display='';document.getElementById('bulkSummary').innerHTML='<b>'+bulkData.length+'</b> parsed — <span style="color:var(--grn)">'+valid+' valid</span>, <span style="color:var(--red)">'+errors+' errors</span>';document.getElementById('bulkRows').innerHTML=bulkData.slice(0,15).map(function(r){return '<div class="bulk-row"><span style="color:'+(r.valid?'var(--t0)':'var(--red)')+';font-weight:500">'+(r.valid?esc(r.name):'— missing —')+'</span><span style="color:var(--t2)">'+esc(r.email)+'</span><span style="color:'+(r.valid?'var(--grn)':'var(--red)')+';font-weight:600;font-size:.65rem">'+(r.valid?'✓':'✗')+'</span></div>'}).join('')+(bulkData.length>15?'<div class="bulk-row" style="justify-content:center;color:var(--t3)">+ '+(bulkData.length-15)+' more</div>':'')}
+async function importBulk(){var v=bulkData.filter(function(r){return r.valid});if(!v.length){toast('No valid candidates','error');return}var imp=0;for(var i=0;i<v.length;i++){var r=v[i];if(candidates.some(function(c){return c.email.toLowerCase()===r.email.toLowerCase()}))continue;var tn=(candidates.length+1).toString().padStart(4,'0');var pf=(cfg.orgName||'DH').substring(0,2).toUpperCase();var c={id:uid(),token:pf+'-'+tn,fullName:r.name,email:r.email,phone:r.phone,degree:r.degree,specialization:r.specialization,college:r.college,passYear:r.year,experience:r.experience,currentCompany:r.company,skills:r.skills,positionApplied:'',currentCtc:'',expectedCtc:'',noticePeriod:'',dob:'',gender:'',notes:'Bulk upload',status:'registered',ts:Date.now(),adminRemarks:'',assignedRecruiter:''};await put('candidates',c);candidates.unshift(c);imp++}toast(imp+' imported','success');clearBulk();loadAdmin()}
+function clearBulk(){bulkData=[];document.getElementById('bulkPreview').style.display='none';document.getElementById('bulkInput').value=''}
+function dlTemplate(){dlFile('Name,Email,Phone,Degree,Specialization,College,Year,Experience,Company,Skills\nJohn Doe,john@example.com,+91 98765 43210,B.Tech,CS,VIT,2022,2,Infosys,"Java, React"','drivehub-template.csv','text/csv')}
+
+// ═══ INTEGRATIONS ═══
+function renderApis(){document.getElementById('apiCards').innerHTML=apis.map(function(a){return '<div class="api-card"><div class="api-logo" style="background:'+a.color+';color:#fff">'+a.abbr+'</div><div class="api-info"><h5>'+esc(a.name)+'</h5><p>'+esc(a.desc)+'</p></div><button class="api-st '+(a.status==='connected'?'live':a.status==='configured'?'cfg':'off')+'" onclick="toggleApi(\''+a.id+'\')">'+(a.status==='connected'?'Connected':a.status==='configured'?'Configured':'Connect')+'</button></div>'}).join('')}
+async function toggleApi(id){var a=apis.find(function(x){return x.id===id});if(!a)return;a.status=a.status==='disconnected'?'configured':a.status==='configured'?'connected':'disconnected';await put('apis',a);renderApis();toast(a.name+': '+a.status,'info')}
+
+// ═══ SHARING ═══
+function genShareLink(){var slug=(cfg.orgName||'company').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')+'-drive';document.getElementById('shareLink').value='https://drivehub.app/d/'+slug}
+function renderSharePage(){genShareLink();var link=document.getElementById('shareLink').value;document.getElementById('shareGrid').innerHTML=SHARE_APPS.map(function(a,i){return '<div class="share-opt" onclick="shareVia('+i+')" title="'+a.n+'"><div class="share-ico" style="background:'+a.c+';color:#fff">'+a.i+'</div>'+a.n+'</div>'}).join('')}
+function shareVia(i){var a=SHARE_APPS[i];var l=document.getElementById('shareLink').value;if(a.n==='Copy Link'){navigator.clipboard&&navigator.clipboard.writeText(l);toast('Copied!','success');return}if(a.u)window.open(a.u(l),'_blank')}
+function copyLink(){var l=document.getElementById('shareLink').value;navigator.clipboard&&navigator.clipboard.writeText(l);toast('Copied!','success')}
+
+// ═══ SETTINGS ═══
+function loadCfg(){document.getElementById('cfgOrg').value=cfg.orgName||'';document.getElementById('cfgTitle').value=cfg.driveTitle||'';document.getElementById('cfgDate').value=cfg.driveDate||'';document.getElementById('cfgVenue').value=cfg.venue||'';document.getElementById('cfgPos').value=cfg.positions||''}
+async function saveCfg(){cfg.orgName=document.getElementById('cfgOrg').value;cfg.driveTitle=document.getElementById('cfgTitle').value;cfg.driveDate=document.getElementById('cfgDate').value;cfg.venue=document.getElementById('cfgVenue').value;cfg.positions=document.getElementById('cfgPos').value;await put('config',cfg);genShareLink()}
+function renderFieldToggles(){var always=['fullName','email','phone'];document.getElementById('fieldToggles').innerHTML=Object.keys(FIELDS).map(function(k){var on=cfg.fields[k]!==false;var dis=always.indexOf(k)>=0;return '<label class="toggle-row"><input type="checkbox" '+(on?'checked':'')+' '+(dis?'disabled':'')+' onchange="toggleField(\''+k+'\',this.checked)">'+FIELDS[k]+(dis?' <span style="font-size:.68rem;color:var(--t3)">(required)</span>':'')+'</label>'}).join('')}
+async function toggleField(k,v){cfg.fields[k]=v;await put('config',cfg)}
+async function saveAdminCreds(){adminCreds.email=document.getElementById('cfgAdminEmail').value;adminCreds.password=document.getElementById('cfgAdminPass').value;await put('config',adminCreds);toast('Credentials updated','success')}
+
+// ═══ EXPORT ═══
+function exportCSV(){if(!candidates.length){toast('No data','error');return}var h=['Token','Name','Email','Phone','DOB','Gender','Degree','Specialization','College','Year','Experience','Company','Skills','Position','CTC Current','CTC Expected','Notice','Status','Recruiter','Registered','Remarks'];var rows=candidates.map(function(c){return[c.token,c.fullName,c.email,c.phone,c.dob,c.gender,c.degree,c.specialization,c.college,c.passYear,c.experience,c.currentCompany,c.skills,c.positionApplied,c.currentCtc,c.expectedCtc,c.noticePeriod,c.status,c.assignedRecruiter||'',new Date(c.ts).toLocaleString(),c.adminRemarks||'']});var csv='\uFEFF'+[h].concat(rows).map(function(r){return r.map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');dlFile(csv,'DriveHub-Candidates-'+ds()+'.csv','text/csv');toast('CSV exported','success')}
+function exportJSON(){if(!candidates.length){toast('No data','error');return}dlFile(JSON.stringify({config:cfg,recruiters:recruiters,candidates:candidates},null,2),'DriveHub-'+ds()+'.json','application/json');toast('JSON exported','success')}
+async function clearAll(){if(!confirm('Delete ALL candidates?'))return;if(!confirm('Are you sure?'))return;await clr('candidates');candidates=[];loadAdmin();toast('Cleared','info')}
+
+// ═══ CANDIDATE APP ═══
+function enterCandidate(){
+  showView('candidateView');
+  var cand=JSON.parse(localStorage.getItem('dh_cand')||'{}');
+  document.getElementById('candLabel').textContent=cand.name||'';
+  if(cand.name)document.getElementById('rName').value=cand.name;
+  if(cand.email)document.getElementById('rEmail').value=cand.email;
+  if(cand.phone)document.getElementById('rPhone').value=cand.phone;
+  if(cfg.driveTitle||cfg.orgName){document.getElementById('driveBanner').style.display='';document.getElementById('banTitle').textContent=cfg.driveTitle||'Walk-in Drive';document.getElementById('banOrg').textContent=cfg.orgName||'';document.getElementById('candTitle').textContent=cfg.driveTitle||'DriveHub'}
+  var ps=document.getElementById('rPosition');
+  // Remove any previously appended custom optgroup
+  var oldCustom=ps.querySelector('optgroup[label="── Custom Roles ──"]');if(oldCustom)oldCustom.remove();
+  // Append admin-configured custom positions
+  if(cfg.positions&&cfg.positions.trim()){var cg=document.createElement('optgroup');cg.label='── Custom Roles ──';cfg.positions.split(',').forEach(function(p){p=p.trim();if(p){var o=document.createElement('option');o.textContent=p;cg.appendChild(o)}});ps.appendChild(cg)};
+  document.querySelectorAll('[data-field]').forEach(function(el){el.style.display=cfg.fields[el.dataset.field]!==false?'':'none'});
+  document.getElementById('candFormView').style.display='';document.getElementById('candSuccessView').style.display='none';
+}
+
+async function submitReg(e){
+  e.preventDefault();var email=document.getElementById('rEmail').value.trim();
+  if(candidates.some(function(c){return c.email.toLowerCase()===email.toLowerCase()})){toast('Email already registered!','error');return}
+  var tn=(candidates.length+1).toString().padStart(4,'0');var pf=(cfg.orgName||'DH').substring(0,2).toUpperCase();
+  var c={id:uid(),token:pf+'-'+tn,fullName:document.getElementById('rName').value.trim(),email:email,phone:document.getElementById('rPhone').value.trim(),dob:document.getElementById('rDob').value,gender:document.getElementById('rGender').value,degree:document.getElementById('rDegree').value,specialization:document.getElementById('rSpec').value.trim(),college:document.getElementById('rCollege').value.trim(),passYear:document.getElementById('rYear').value,experience:document.getElementById('rExp').value,currentCompany:document.getElementById('rCompany').value.trim(),skills:document.getElementById('rSkills').value.trim(),positionApplied:document.getElementById('rPosition').value,currentCtc:document.getElementById('rCurCtc').value.trim(),expectedCtc:document.getElementById('rExpCtc').value.trim(),noticePeriod:document.getElementById('rNotice').value,notes:document.getElementById('rNotes').value.trim(),status:'registered',ts:Date.now(),adminRemarks:'',assignedRecruiter:''};
+  await put('candidates',c);candidates.unshift(c);
+  document.getElementById('candFormView').style.display='none';document.getElementById('candSuccessView').style.display='';document.getElementById('successToken').textContent=c.token;
+}
+
+function resetCandForm(){document.getElementById('regForm').reset();document.getElementById('candFormView').style.display='';document.getElementById('candSuccessView').style.display='none';var cand=JSON.parse(localStorage.getItem('dh_cand')||'{}');if(cand.name)document.getElementById('rName').value=cand.name;if(cand.email)document.getElementById('rEmail').value=cand.email;if(cand.phone)document.getElementById('rPhone').value=cand.phone}
+
+// ═══ UTILS ═══
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function ds(){return new Date().toISOString().slice(0,10)}
+function uid(){return typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'c-'+Date.now()+'-'+Math.random().toString(36).substr(2,9)}
+function toast(msg,type){var t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;document.getElementById('toastWrap').appendChild(t);setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},3000)}
+function dlFile(c,n,t){var b=new Blob([c],{type:t});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u)}
+
+// ═══ DRAG & DROP ═══
+var bd=document.getElementById('bulkDrop');
+if(bd){bd.addEventListener('dragover',function(e){e.preventDefault();bd.classList.add('dragover')});bd.addEventListener('dragleave',function(){bd.classList.remove('dragover')});bd.addEventListener('drop',function(e){e.preventDefault();bd.classList.remove('dragover');var f=e.dataTransfer.files[0];if(f){var dt=new DataTransfer();dt.items.add(f);document.getElementById('bulkInput').files=dt.files;handleBulk(document.getElementById('bulkInput'))}})}
+
+// ═══ OFFLINE ═══
+window.addEventListener('online',function(){document.getElementById('offlineBar').classList.remove('show');toast('Back online!','success')});
+window.addEventListener('offline',function(){document.getElementById('offlineBar').classList.add('show')});
+if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
